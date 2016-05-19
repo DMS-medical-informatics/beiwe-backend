@@ -14,6 +14,7 @@ from config.constants import (API_TIME_FORMAT, VOICE_RECORDING, ALL_DATA_STREAMS
                               CONCURRENT_NETWORK_OPS, SURVEY_ANSWERS, SURVEY_TIMINGS, NUMBER_FILES_IN_FLIGHT)
 from boto.utils import JSONDecodeError
 from flask.helpers import send_file
+from flask import Response
 from _io import BytesIO
 
 # Data Notes
@@ -121,45 +122,51 @@ def grab_data():
 
     del chunks
 
+    is_web_form = 'web_form' in request.values
     #Retrieve data
-    pool = ThreadPool(CONCURRENT_NETWORK_OPS)
-    if 'web_form' in request.values: f = BytesIO()
+    if is_web_form: f = BytesIO()
     else: f = StringIO()
     z = ZipFile(f, mode="w", compression=ZIP_DEFLATED, allowZip64=True)
     # If the request comes from the web form we need to use
     # a bytesio "file" object to return a file blob, if it came from the command
     # line we use a StringIO because that was how it was written.  :D
     ret_reg = {}
-    try:
-        #run through the data in chunks, construct the zip file in memory using some smaller amount of memory than maximum
-        for slice_start in range(0, len(get_these_files), NUMBER_FILES_IN_FLIGHT):
-            #pull in data
-            chunks_and_content = pool.map(batch_retrieve_for_api_request, get_these_files[slice_start:slice_start + NUMBER_FILES_IN_FLIGHT], chunksize=1)
-            #write data to zip.
-            for chunk, file_contents in chunks_and_content:
-                file_name = determine_file_name(chunk)
-                ret_reg[chunk['chunk_path']] = chunk["chunk_hash"]
-                z.writestr(file_name, file_contents)
-                file_contents = None
-                chunk = None
+    def write_zip_file():
+        pool = ThreadPool(CONCURRENT_NETWORK_OPS)
+        try:
+            #run through the data in chunks, construct the zip file in memory using some smaller amount of memory than maximum
+            for slice_start in range(0, len(get_these_files), NUMBER_FILES_IN_FLIGHT):
+                #pull in data
+                chunks_and_content = pool.imap_unordered(batch_retrieve_for_api_request, get_these_files[slice_start:slice_start + NUMBER_FILES_IN_FLIGHT], chunksize=1)
+                #write data to zip.
+                for chunk, file_contents in chunks_and_content:
+                    file_name = determine_file_name(chunk)
+                    ret_reg[chunk['chunk_path']] = chunk["chunk_hash"]
+                    z.writestr(file_name, file_contents)
+                    file_contents = None
+                    chunk = None
+                    yield f.getvalue()
+                    f.truncate(0)
+                    f.seek(0)
 
-        if 'web_form' not in request.values:
-            z.writestr("registry", json.dumps(ret_reg)) #and add the registry file.
-        # close all the things.
-        z.close()
-        pool.close()
-        pool.terminate()
-        if 'web_form' in request.values:
-            f.seek(0)
-            return send_file(f, attachment_filename="data.zip",mimetype="zip",as_attachment=True)
-        return f.getvalue()
+            if not is_web_form:
+                z.writestr("registry", json.dumps(ret_reg)) #and add the registry file.
+            # close all the things.
+            z.close()
+            yield f.getvalue()
+        except Exception:
+            raise
 
-    except Exception:
-        raise
+        finally:
+            pool.close()
+            pool.terminate()
 
-    finally:
-        pool.close()
-        pool.terminate()
+    if is_web_form:
+        return Response(write_zip_file(), mimetype="zip",headers={
+            'Content-Disposition': 'attachment; filename="data.zip"'
+        })
+    return Response(write_zip_file())
+
 
 def parse_registry(reg_dat):
     """ Parses the provided registry.dat file and returns a dictionary of chunk
