@@ -258,3 +258,10 @@ def get_latest_surveys(OS_API=""):
     user = User(request.values['patient_id'])
     study = Study(user.study_id)
     return json.dumps(study.get_surveys_for_study())
+
+@mobile_api.route('/email_test', methods=['GET'])
+def email_test():
+    log_and_email_error( Exception("intentional exception"), "Test heroku beiwe email logging" )
+    email_system_administrators("email_system_administrators test email body", "email_system_administrators test email subject")
+    return render_template('blank.html'), 200
+

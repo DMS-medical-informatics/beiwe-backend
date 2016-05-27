@@ -47,9 +47,9 @@ ASYMMETRIC_KEY_LENGTH = 2048
 ITERATIONS = 1000
 
 # Email addresses used on the server.
-E500_EMAIL_ADDRESS = "keary@mindless.com" #500 error email source
-OTHER_EMAIL_ADDRESS = "keary@mindless.com" #500 error email source
-SYSADMIN_EMAILS = ["keary@mindless.com" ]
+E500_EMAIL_ADDRESS = "noreply@unwiredappeal.net" #500 error email source
+OTHER_EMAIL_ADDRESS = "noreply@unwiredappeal.net" #500 error email source
+SYSADMIN_EMAILS = ["keary@mindless.com", "eli@zagaran.com" ]
 
 
 """            Setting up MongoDB and mongolia

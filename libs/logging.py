@@ -1,7 +1,13 @@
+import os
 import traceback, smtplib
 from datetime import datetime
 from config.security import E500_EMAIL_ADDRESS, SYSADMIN_EMAILS, OTHER_EMAIL_ADDRESS
 
+def open_email_server():
+        server = smtplib.SMTP(os.getenv("SPARKPOST_SMTP_HOST"), os.getenv("SPARKPOST_SMTP_PORT"))
+        server.starttls()
+        server.login(os.getenv("SPARKPOST_SMTP_USERNAME"), os.getenv("SPARKPOST_SMTP_PASSWORD"))
+        return server
 
 def log_and_email_error(e, log_message=None, emails=SYSADMIN_EMAILS ):
     """ Prints in the server logs (defaults to Apache if not specified),
@@ -12,8 +18,8 @@ def log_and_email_error(e, log_message=None, emails=SYSADMIN_EMAILS ):
     try:
         subject = "Beiwe Error: %s" % e.message
         content = log_error(e, log_message, reraise=True)
-        error_email = 'Subject: %s\n\n%s' % (subject, content)
-        email_server = smtplib.SMTP("localhost")
+        error_email = 'From: %s\nSubject: STAGE-%s\n\n%s' % (E500_EMAIL_ADDRESS, subject, content)
+        email_server = open_email_server() 
         email_server.sendmail( E500_EMAIL_ADDRESS, emails, error_email )
         email_server.quit()
     except Exception:
@@ -41,9 +47,9 @@ def log_error(e, message=None, reraise=False):
 
 def email_system_administrators(message, subject, source_email=OTHER_EMAIL_ADDRESS):
     """ Sends an email to the system administrators. """
-    error_email = 'Subject: %s\n\n%s' % (subject, message)
+    error_email = 'From: %s\nSubject: STAGE-%s\n\n%s' % (source_email, subject, message)
     try:
-        email_server = smtplib.SMTP("localhost")
+        email_server = open_email_server() 
         email_server.sendmail( source_email, SYSADMIN_EMAILS, error_email )
         email_server.quit()
     except Exception as e:
