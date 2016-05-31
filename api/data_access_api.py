@@ -137,9 +137,9 @@ def grab_data():
             #run through the data in chunks, construct the zip file in memory using some smaller amount of memory than maximum
             for slice_start in range(0, len(get_these_files), NUMBER_FILES_IN_FLIGHT):
                 #pull in data
-                chunks_and_content = pool.imap_unordered(batch_retrieve_for_api_request,
+                chunks_and_content = pool.imap(batch_retrieve_for_api_request,
                                                          get_these_files[slice_start:slice_start + NUMBER_FILES_IN_FLIGHT],
-                                                         chunksize=2)
+                                                         chunksize=1)
                 # there appear to be some weird conditions with chunksize=1 where there is a default timeout,
                 #    setting chunksize to any value but 1 should remove that timeout condition.
                 #Write data to zip:
