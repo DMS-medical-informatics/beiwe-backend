@@ -1,6 +1,7 @@
 """ This file contains values used throughout the codebase.
     Don't change values if you don't know what they do. """
 
+import os
 # API differences
 # use_these aliases to determine if the incoming url was for an api version
 IOS_API = "IOS"
@@ -51,9 +52,9 @@ TIMER_VALUES = ["accelerometer_off_duration_seconds",
 
 ## Networking ##
 DEFAULT_S3_RETRIES = 1 #This value is used in libs.s3, does what it says.
-CONCURRENT_NETWORK_OPS = 10
-NUMBER_FILES_IN_FLIGHT = 100
-FILE_PROCESS_PAGE_SIZE = 250
+CONCURRENT_NETWORK_OPS = int(os.getenv("CONCURRENT_NETWORK_OPS", "10"))
+NUMBER_FILES_IN_FLIGHT = int(os.getenv("NUMBER_FILES_IN_FLIGHT", "100"))
+FILE_PROCESS_PAGE_SIZE = int(os.getenv("FILE_PROCESS_PAGE_SIZE", "250"))
 #NOTE: these number was determined through trial and error on a C4 Large AWS instance.  There is a point in
 # when reindexing the full dataset (@300,000 items it was after processing ~120,000)
 # there are a chunk of files that, with a page size of 250, fills up ~38% of 
