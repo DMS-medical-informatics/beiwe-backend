@@ -2,7 +2,6 @@ from bson import ObjectId
 from datetime import datetime
 from flask import Blueprint, request, abort, json
 from multiprocessing.pool import ThreadPool
-from StringIO import StringIO
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from bson.errors import InvalidId
@@ -15,7 +14,7 @@ from config.constants import (API_TIME_FORMAT, VOICE_RECORDING, ALL_DATA_STREAMS
 from boto.utils import JSONDecodeError
 from flask.helpers import send_file
 from flask import Response
-from _io import BytesIO
+from libs.telling_io import  TellingBytesIO
 
 # Data Notes
 # The call log has the timestamp column as the 3rd column instead of the first.
@@ -26,7 +25,6 @@ data_access_api = Blueprint('data_access_api', __name__)
 
 upload_stream_map = { "survey_answers":("surveyAnswers", "csv" ),
                       "audio":("voiceRecording", "mp4" ) }
-
 
 @data_access_api.route("/get-studies/v1", methods=['POST', "GET"])
 def get_studies():
@@ -124,8 +122,10 @@ def grab_data():
 
     is_web_form = 'web_form' in request.values
     #Retrieve data
-    if is_web_form: f = BytesIO()
-    else: f = StringIO()
+    #if is_web_form: f = BytesIO()
+    #else: f = StringIO()
+    # Use TellingBytesIO which keeps track of the effective offset (returned from tell()) even after an empty
+    f = TellingBytesIO()
     z = ZipFile(f, mode="w", compression=ZIP_DEFLATED, allowZip64=True)
     # If the request comes from the web form we need to use
     # a bytesio "file" object to return a file blob, if it came from the command
@@ -149,8 +149,7 @@ def grab_data():
                     z.writestr(file_name, file_contents)
                     del file_contents, chunk
                     yield f.getvalue()
-                    f.truncate(0)
-                    f.seek(0)
+                    f.empty()
 
             if not is_web_form:
                 z.writestr("registry", json.dumps(ret_reg)) #and add the registry file.
