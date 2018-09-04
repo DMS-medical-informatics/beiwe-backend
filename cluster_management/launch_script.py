@@ -188,7 +188,8 @@ def apt_installs(manager=False, single_server_ami=False):
     installs_string = " ".join(apt_install_list)
     
     sudo('apt-get -y update >> {log}'.format(log=LOG_FILE))
-    sudo('apt-get -y install {installs} >> {log}'.format(installs=installs_string, log=LOG_FILE))
+
+    retry(sudo, 'apt-get -y install {installs} >> {log}'.format(installs=installs_string, log=LOG_FILE))
 
 
 def push_beiwe_configuration(eb_environment_name, single_server_ami=False):
@@ -364,7 +365,9 @@ def do_create_manager():
         log.error(e)
         EXIT(1)
     public_ip = instance['NetworkInterfaces'][0]['PrivateIpAddresses'][0]['Association']['PublicIp']
-    
+
+    log.info("Finished creating manager server for %s..." % name)
+
     # TODO: fabric up the rabbitmq and cron task, ensure other servers can connect, watch data process
     configure_fabric(name, public_ip)
     push_files()
@@ -380,9 +383,15 @@ def do_create_worker():
     name = prompt_for_extant_eb_environment_name()
     do_fail_if_environment_does_not_exist(name)
     manager_instance = get_manager_instance_by_eb_environment_name(name)
-    if manager_instance is None or manager_instance['State']['Name'] != 'running':
+    if manager_instance is None :
         log.error(
             "There is no manager server for the %s cluster, cannot deploy a worker until there is." % name)
+        EXIT(1)
+
+    if manager_instance['State']['Name'] != 'running':
+        log.error(
+            "There is a manager server for the %s cluster, but it is not in the running state (%s)." % (name,
+                                                                                                        manager_instance['State']['Name'] ))
         EXIT(1)
     
     manager_public_ip = get_manager_public_ip(name)
@@ -545,7 +554,7 @@ if __name__ == "__main__":
     if arguments.fix_health_checks_blocking_deployment:
         do_fix_health_checks()
         EXIT(0)
-    
+
     if arguments.purge_instance_profiles:
         print purge_command_blurb, "\n\n\n"
         iam_purge_instance_profiles()
