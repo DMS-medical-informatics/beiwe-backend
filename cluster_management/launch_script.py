@@ -49,7 +49,7 @@ from deployment_helpers.constants import (
     LOCAL_INSTALL_CELERY_WORKER, LOCAL_PYENV_INSTALLER_FILE, LOG_FILE, PUSHED_FILES_FOLDER,
     REMOTE_APACHE_CONFIG_FILE_PATH, REMOTE_CRONJOB_FILE_PATH, REMOTE_GIT_KEY_PATH, REMOTE_HOME_DIR,
     REMOTE_INSTALL_CELERY_WORKER, REMOTE_PYENV_INSTALLER_FILE, REMOTE_USERNAME, STAGED_FILES,
-    USER_SPECIFIC_CONFIG_FOLDER)
+    USER_SPECIFIC_CONFIG_FOLDER, LOCAL_CELERY_USER, REMOTE_CELERY_USER, LOCAL_CELERY_CONFIGURATION, REMOTE_CELERY_CONFIGURATION)
 from deployment_helpers.general_utils import log, EXIT, current_time_string, do_zip_reduction, retry
 
 
@@ -153,9 +153,18 @@ def setup_python(using_pyenv=True):
             .format(home=REMOTE_HOME_DIR, log=LOG_FILE))
 
 
+def setup_celery_manager():
+    # Copy the script from the local repository onto the remote server,
+    # make it executable and execute it.
+    put(LOCAL_CELERY_USER, REMOTE_CELERY_USER)
+    put(LOCAL_CELERY_CONFIGURATION, REMOTE_CELERY_CONFIGURATION)
+    run('chmod +x {file}'.format(file=REMOTE_CELERY_CONFIGURATION))
+    run('{file} >> {log}'.format(file=REMOTE_CELERY_CONFIGURATION, log=LOG_FILE))
+
 def setup_celery_worker():
     # Copy the script from the local repository onto the remote server,
     # make it executable and execute it.
+    put(LOCAL_CELERY_USER, REMOTE_CELERY_USER)
     put(LOCAL_INSTALL_CELERY_WORKER, REMOTE_INSTALL_CELERY_WORKER)
     run('chmod +x {file}'.format(file=REMOTE_INSTALL_CELERY_WORKER))
     run('{file} >> {log}'.format(file=REMOTE_INSTALL_CELERY_WORKER, log=LOG_FILE))
@@ -376,6 +385,8 @@ def do_create_manager():
     setup_python()
     push_beiwe_configuration(name)
     push_manager_private_ip(name)
+    # CC add script to create rabbitmq user
+    setup_celery_manager()
     setup_manager_cron()
 
 
