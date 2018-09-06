@@ -7,7 +7,6 @@ from libs.admin_authentication import authenticate_admin_study_access
 from libs.sentry import make_error_sentry
 from pipeline.boto_helpers import get_boto_client
 from pipeline.index import create_one_job, refresh_data_access_credentials
-from configuration_getters import get_custom_config
 
 data_pipeline_api = Blueprint('data_pipeline_api', __name__)
 pipeline_region = os.getenv("pipeline_region", None)
@@ -27,15 +26,9 @@ def run_manual_code(study_id):
     object_id = query.get().object_id
 
     if not pipeline_region:
-        pipeline_region = get_custom_config()['region_name']
+        flash('This server is not correctly configured to support data pipeline processes.', category='danger')
+        return redirect('/data-pipeline/{:s}'.format(study_id))
 
-        if not pipeline_region:
-            flash('This server is not correctly configured to support data pipeline processes.', category='danger')
-            return redirect('/data-pipeline/{:s}'.format(study_id))
-        else:
-            flash('This server is  configured to support data pipeline processes. {:s}'.format(pipeline_region),
-                  category='info')
-        
     error_sentry = make_error_sentry("data", tags={"pipeline_frequency": "manually"})
     # Get new data access credentials for the manual user, submit a manual job, display message
     # Report all errors to sentry including DataPipelineNotConfigured errors.
