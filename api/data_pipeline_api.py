@@ -26,8 +26,9 @@ def run_manual_code(study_id):
     object_id = query.get().object_id
 
     if not pipeline_region:
-        flash('This server is not correctly configured to support data pipeline processes.', category='danger')
-        return redirect('/data-pipeline/{:s}'.format(study_id))
+        pipeline_region = 'us-east-1'
+        flash('Pipeline region not configured, choosing default ({})'.format(pipeline_region), category='info')
+        # return redirect('/data-pipeline/{:s}'.format(study_id))
 
     error_sentry = make_error_sentry("data", tags={"pipeline_frequency": "manually"})
     # Get new data access credentials for the manual user, submit a manual job, display message
