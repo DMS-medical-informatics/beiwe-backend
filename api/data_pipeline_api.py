@@ -25,6 +25,7 @@ def run_manual_code(study_id):
         return abort(404)
     object_id = query.get().object_id
 
+    pipeline_region = os.getenv("pipeline_region", None)
     if not pipeline_region:
         pipeline_region = 'us-east-1'
         flash('Pipeline region not configured, choosing default ({})'.format(pipeline_region), category='info')
