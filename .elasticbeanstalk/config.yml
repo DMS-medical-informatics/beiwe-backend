@@ -1,14 +1,26 @@
 branch-defaults:
-  master:
-    environment: beiweCluster-staging
   development:
-    environment: beiweCluster-staging
+    environment: ut-wcwh
+    group_suffix: null
+  master:
+    environment: ut-wcwh
   production:
-    environment: beiweCluster-production
+    environment: ut-wcwh
+environment-defaults:
+  ut-wcwh:
+    branch: null
+    repository: null
 global:
-  application_name: Beiwe Cluster
-  default_ec2_keyname: actually_beiwe_key_pair
-  default_platform: 64bit Amazon Linux 2018.03 v2.7.0 running Python 2.7
+  application_name: beiwe-application
+  branch: null
+  default_ec2_keyname: CC_BEIWE_CLUSTER_KEY
+  default_platform: python-2.7
   default_region: us-east-1
+  include_git_submodules: true
+  instance_profile: null
+  platform_name: null
+  platform_version: null
   profile: eb-cli
+  repository: null
   sc: git
+  workspace_type: Application
