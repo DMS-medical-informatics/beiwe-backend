@@ -11,6 +11,12 @@ from libs.security import check_password_requirements
 
 from database.study_models import Study
 from database.user_models import Researcher
+from database.data_access_models import ChunkRegistry
+from datetime import datetime
+from collections import OrderedDict
+
+import sys 
+import pytz
 
 admin_pages = Blueprint('admin_pages', __name__)
 
@@ -39,16 +45,80 @@ def choose_study():
 @admin_pages.route('/view_study/<string:study_id>', methods=['GET'])
 @authenticate_admin_study_access
 def view_study(study_id=None):
+
+    settings_strings = { 'accelerometer': 'Accelerometer', 'bluetooth': 'Bluetooth', 'calls': 'Calls', 'gps': 'GPS', 
+        'identifiers': 'Identifiers', 'app_log': 'Android Log', 'ios_log': 'IOS Log', 'power_state': 'Power State', 
+        'survey_answers': 'Survey Answers', 'survey_timings': 'Survey Timings', 'texts': 'Texts', 
+        'audio_recordings': 'Audio Recordings', 'image_survey': 'Image Survey', 'wifi': 'Wifi', 'proximity': 'Proximity', 
+        'gyro': 'Gyro', 'magnetometer': 'Magnetometer', 'devicemotion': 'Device Motion', 'reachability': 'Reachability' }
     study = Study.objects.get(pk=study_id)
+    settings = study.get_study_device_settings().as_native_python()
+    data_types_dict = {}
+    for setting_key, setting_label in settings_strings.items():
+        if setting_key in settings and settings[setting_key] is True:
+            data_types_dict[setting_key] = setting_label
     tracking_survey_ids = study.get_survey_ids_and_object_ids_for_study('tracking_survey')
+    if len(tracking_survey_ids) > 0:
+        data_types_dict['survey_answers'] = settings_strings['survey_answers']
+        data_types_dict['survey_timings'] = settings_strings['survey_timings']
     audio_survey_ids = study.get_survey_ids_and_object_ids_for_study('audio_survey')
+    if len(audio_survey_ids) > 0:
+        data_types_dict['audio_recordings'] = settings_strings['audio_recordings']
     image_survey_ids = study.get_survey_ids_and_object_ids_for_study('image_survey')
     participants = study.participants.all()
+
+    data_types_dict = OrderedDict(sorted(data_types_dict.items(), key=lambda t: t[0]))
+
+    print >> sys.stderr, data_types_dict
+
+    participant_ids = [participant.patient_id for participant in participants]
+
+    chunk_fields = ["pk", "participant_id", "data_type", "chunk_path", "time_bin", "chunk_hash",
+                    "participant__patient_id", "study_id", "survey_id", "survey__object_id"]
+    chunks = ChunkRegistry.get_chunks_time_range(study_id = study_id, user_ids = participant_ids).values(*chunk_fields)
+    #print >> sys.stderr, chunks
+    data_received_dates = {}
+    datetime_now = datetime.now()
+    for chunk in chunks:
+        pt = chunk['participant__patient_id']
+        dt = chunk['data_type']
+        time_bin = chunk['time_bin']
+
+        if not pt in data_received_dates:
+            data_received_dates[pt] = {}
+
+        if not dt in data_received_dates[pt] or time_bin > data_received_dates[pt][dt]:
+            data_received_dates[pt][dt] = time_bin
+
+    fmt = "%Y-%m-%d %H:%M:%S"
+    received_data = {}
+    for participant in data_received_dates.keys():
+        if not participant in received_data:
+            received_data[participant] = {}
+        for dt in data_received_dates[participant].keys():
+            if not dt in received_data[participant]:
+                received_data[participant][dt] = {}
+
+            date_diff = (datetime_now - data_received_dates[participant][dt]).total_seconds() / 3600.0
+            date_string = data_received_dates[participant][dt].replace(tzinfo=pytz.utc).astimezone(pytz.timezone('America/Chicago')).strftime(fmt)
+
+            if date_diff < 6.0:
+                 date_color = 'btn-success'
+            if date_diff >= 6.0:
+                 date_color = 'btn-warning'
+            if date_diff >= 12.0:
+                 date_color = 'btn-danger'
+           
+            received_data[participant][dt]['date_color'] = date_color
+            received_data[participant][dt]['date_string'] = date_string
+            #print >> sys.stderr, "%s %f %s"%(date_string, date_diff, date_color)
 
     return render_template(
         'view_study.html',
         study=study,
         patients=participants,
+        received_data=received_data,
+        data_types=data_types_dict,
         audio_survey_ids=audio_survey_ids,
         image_survey_ids=image_survey_ids,
         tracking_survey_ids=tracking_survey_ids,
