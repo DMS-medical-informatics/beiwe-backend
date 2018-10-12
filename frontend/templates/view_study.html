@@ -4,7 +4,7 @@
 
 {% block content %}
 
-    <div class="container">
+     <div class="container"> 
       <div class="span12">
         <div class="row">
         </div>
@@ -29,9 +29,12 @@
           <thead>
             <tr>
               <th>Patient ID</th>
+              <th>Reset password</th>
               <th>Phone registered</th>
               <th>Phone OS</th>
-              <th>Reset password</th>
+              {% for data_type in data_types %}
+                  <th>{{ data_types[data_type] }}</th>
+              {% endfor %}
             </tr>
           </thead>
           <tbody id="users-table-body">
@@ -42,12 +45,21 @@
                   <b>{{ patient.patient_id }}</b>
                 </td>
                 <td>
+                  <form action="/reset_participant_password" method="post">
+                    <div class="form-inline">
+                      <input type="hidden" name="patient_id" value="{{ patient.patient_id }}">
+                      <input type="hidden" name="study_id" value="{{ study.id }}">
+                      <button type="submit" class="btn btn-primary btn-sm reset_password_button">Reset password</button>
+                    </div>
+                  </form>
+                </td>
+                <td>
                   {% if patient.device_id %}
                     <form action="/reset_device" method="post">
                       <div class="form-inline">
                         <input type="hidden" name="patient_id" value="{{ patient.patient_id }}">
                         <input type="hidden" name="study_id" value="{{ study.id }}">
-                        <button type="submit" class="btn btn-warning btn-sm reset_device_button">Un-Register Smartphone</button>
+                        <button type="submit" class="btn btn-primary btn-sm reset_device_button">Un-Register Smartphone</button>
                       </div>
                     </form>
                   {% else %}
@@ -61,15 +73,19 @@
                     <i>unknown</i>
                   {% endif %}
                 </td>
-                <td>
-                  <form action="/reset_participant_password" method="post">
-                    <div class="form-inline">
-                      <input type="hidden" name="patient_id" value="{{ patient.patient_id }}">
-                      <input type="hidden" name="study_id" value="{{ study.id }}">
-                      <button type="submit" class="btn btn-warning btn-sm reset_password_button">Reset password</button>
-                    </div>
-                  </form>
-                </td>
+                {% for data_type in data_types %}
+                    <td>
+                      {% if received_data[patient.patient_id] %}
+                          {% if received_data[patient.patient_id][data_type] %}
+                              <button type="button" class="btn {{ received_data[patient.patient_id][data_type]['date_color']}}">{{ received_data[patient.patient_id][data_type]['date_string'] }}</button>
+                          {% else %}
+                              <button type="button" class="btn btn-danger">None</button>
+                          {% endif %}
+                      {% else %}
+                        <i>unknown</i>
+                      {% endif %}
+                    </td>
+                {% endfor %}
               </tr>
             {% endfor %}
 
@@ -152,6 +168,6 @@
         </div>
 
       </div>
-    </div>
+  </div>
 
 {% endblock %}
