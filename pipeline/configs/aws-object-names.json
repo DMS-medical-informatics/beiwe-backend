@@ -8,6 +8,6 @@
   "job_defn_name": "data-pipeline-job-defn",
   "job_name": "data-pipeline-{freq}-job",
   "queue_name": "data-pipeline-queue",
-  "secret_key_ssm_name": "beiwe-daa-key-1",
+  "beiwe-daa-key-0": "beiwe-daa-key-1",
   "security_group": "data-pipeline-security-group"
 }
